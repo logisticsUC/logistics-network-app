@@ -117,6 +117,42 @@ with col2:
 # STEP 3：現行案と改善案のコスト入力
 # ==========================================
 
+# ==========================================
+# STEP 3：改善後の物流条件
+# ==========================================
+
+st.header("3．改善後の物流条件")
+
+st.write(
+    "改善を実施した場合の物流条件を入力してください。"
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    improved_distance = st.number_input(
+        "改善後の輸送距離（km）",
+        min_value=0,
+        value=180,
+        step=10,
+    )
+
+with col2:
+
+    improved_frequency = st.number_input(
+        "改善後の月間輸送回数（回）",
+        min_value=0,
+        value=12,
+        step=1,
+    )
+
+    improved_leadtime = st.number_input(
+        "改善後のリードタイム（日）",
+        min_value=0.0,
+        value=3.0,
+        step=0.5,
+    )
 st.header("3．コスト条件の入力")
 
 col1, col2 = st.columns(2)
