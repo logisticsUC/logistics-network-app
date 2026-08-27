@@ -36,14 +36,24 @@ improvement_theme = st.selectbox(
     ],
 )
 
-improvement_detail = st.text_area(
-    "現在の課題と、検討している改善内容を簡単に入力してください",
-    placeholder=(
-        "例：現在は工場から物流センターを経由して加工先へ輸送している。"
-        "物流費削減のため、加工先への直接輸送を検討する。"
-    ),
+st.subheader("現在の物流ネットワーク")
+
+current_network = st.text_area(
+    "現在の物流の流れを入力してください",
+    placeholder="例：工場 → 物流センター → 委託加工先 → 物流センター",
 )
 
+st.subheader("検討する改善案")
+
+improved_network = st.text_area(
+    "改善後の物流の流れを入力してください",
+    placeholder="例：工場 → 委託加工先 → 物流センター",
+)
+
+improvement_reason = st.text_area(
+    "なぜこの改善を検討していますか？",
+    placeholder="例：中間輸送を削減し、物流費とリードタイムを低減するため",
+)
 st.header("2．基本条件")
 
 monthly_quantity = st.number_input(
