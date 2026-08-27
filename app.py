@@ -69,17 +69,48 @@ improvement_reason = st.text_area(
 
 
 # ==========================================
-# STEP 2：基本条件
+# STEP 2：現在の物流状況
 # ==========================================
 
-st.header("2．基本条件")
+st.header("2．現在の物流状況")
 
-monthly_quantity = st.number_input(
-    "月間数量（個）",
-    min_value=0,
-    value=100000,
-    step=1000,
+st.write(
+    "現在の物流ネットワークの基本条件を入力してください。"
 )
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    monthly_quantity = st.number_input(
+        "月間取扱数量（個）",
+        min_value=0,
+        value=100000,
+        step=1000,
+    )
+
+    current_distance = st.number_input(
+        "現在の輸送距離（km）",
+        min_value=0,
+        value=300,
+        step=10,
+    )
+
+with col2:
+
+    current_frequency = st.number_input(
+        "現在の月間輸送回数（回）",
+        min_value=0,
+        value=20,
+        step=1,
+    )
+
+    current_leadtime = st.number_input(
+        "現在のリードタイム（日）",
+        min_value=0.0,
+        value=5.0,
+        step=0.5,
+    )
 
 
 # ==========================================
