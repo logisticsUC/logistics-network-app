@@ -20,7 +20,8 @@ st.title("🚚 物流ネットワーク評価アプリ")
 st.write(
     """
     製造業の物流ネットワークについて、
-    現状と改善案を整理し、コストを比較・評価する卒業研究用アプリです。
+    現状と改善案を整理し、コストや物流条件の変化を比較・評価する
+    卒業研究用アプリです。
     """
 )
 
@@ -114,10 +115,6 @@ with col2:
 
 
 # ==========================================
-# STEP 4：現行案と改善案のコスト入力
-# ==========================================
-
-# ==========================================
 # STEP 3：改善後の物流条件
 # ==========================================
 
@@ -153,9 +150,78 @@ with col2:
         value=3.0,
         step=0.5,
     )
+
+
+# ==========================================
+# 物流条件の改善効果
+# ==========================================
+
+st.subheader("物流条件の改善効果")
+
+# 輸送距離の差
+distance_difference = (
+    current_distance - improved_distance
+)
+
+# 輸送回数の差
+frequency_difference = (
+    current_frequency - improved_frequency
+)
+
+# リードタイムの差
+leadtime_difference = (
+    current_leadtime - improved_leadtime
+)
+
+# 輸送回数の削減率
+if current_frequency > 0:
+    frequency_reduction_rate = (
+        frequency_difference / current_frequency
+    ) * 100
+else:
+    frequency_reduction_rate = 0
+
+
+# 3つの改善効果を横並びで表示
+result_col1, result_col2, result_col3 = st.columns(3)
+
+with result_col1:
+
+    st.metric(
+        "輸送距離",
+        f"{improved_distance:,} km",
+        delta=f"{distance_difference:,.0f} km短縮",
+    )
+
+with result_col2:
+
+    st.metric(
+        "月間輸送回数",
+        f"{improved_frequency:,} 回",
+        delta=f"{frequency_reduction_rate:,.1f}%削減",
+    )
+
+with result_col3:
+
+    st.metric(
+        "リードタイム",
+        f"{improved_leadtime:,.1f} 日",
+        delta=f"{leadtime_difference:,.1f} 日短縮",
+    )
+
+
+# ==========================================
+# STEP 4：現行案と改善案のコスト入力
+# ==========================================
+
 st.header("4．コスト条件の入力")
 
+st.write(
+    "現行案と改善案について、月間コストを入力してください。"
+)
+
 col1, col2 = st.columns(2)
+
 
 # -------------------------
 # 現行案
@@ -284,9 +350,23 @@ annual_difference = (
     - improved_annual_total
 )
 
+# 月間削減額
+monthly_difference = (
+    current_monthly_total
+    - improved_monthly_total
+)
+
+# 削減率
+if current_annual_total > 0:
+    annual_reduction_rate = (
+        annual_difference / current_annual_total
+    ) * 100
+else:
+    annual_reduction_rate = 0
+
 
 # ==========================================
-# STEP 6：比較結果
+# STEP 6：コスト比較結果
 # ==========================================
 
 st.header("6．コスト比較結果")
@@ -326,15 +406,33 @@ st.dataframe(
 
 
 # ==========================================
-# 年間削減額
+# コスト改善効果
 # ==========================================
 
-st.subheader("改善効果")
+st.subheader("コスト改善効果")
 
-st.metric(
-    "改善案による年間削減額",
-    f"{annual_difference:,.0f}円",
-)
+cost_col1, cost_col2, cost_col3 = st.columns(3)
+
+with cost_col1:
+
+    st.metric(
+        "月間削減額",
+        f"{monthly_difference:,.0f} 円",
+    )
+
+with cost_col2:
+
+    st.metric(
+        "年間削減額",
+        f"{annual_difference:,.0f} 円",
+    )
+
+with cost_col3:
+
+    st.metric(
+        "年間コスト削減率",
+        f"{annual_reduction_rate:,.1f} %",
+    )
 
 
 # ==========================================
@@ -357,6 +455,57 @@ chart_df = pd.DataFrame(
 )
 
 st.bar_chart(chart_df)
+
+
+# ==========================================
+# STEP 7：今回の改善内容まとめ
+# ==========================================
+
+st.header("7．改善内容のまとめ")
+
+st.write(
+    f"**改善テーマ：** {improvement_theme}"
+)
+
+if current_network:
+    st.write(
+        f"**現在の物流ネットワーク：** {current_network}"
+    )
+
+if improved_network:
+    st.write(
+        f"**改善後の物流ネットワーク：** {improved_network}"
+    )
+
+if improvement_reason:
+    st.write(
+        f"**改善を検討する理由：** {improvement_reason}"
+    )
+
+st.write("---")
+
+summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+with summary_col1:
+
+    st.metric(
+        "輸送距離の変化",
+        f"{current_distance:,} → {improved_distance:,} km",
+    )
+
+with summary_col2:
+
+    st.metric(
+        "輸送回数の変化",
+        f"{current_frequency:,} → {improved_frequency:,} 回",
+    )
+
+with summary_col3:
+
+    st.metric(
+        "リードタイムの変化",
+        f"{current_leadtime:,.1f} → {improved_leadtime:,.1f} 日",
+    )
 
 
 # ==========================================
