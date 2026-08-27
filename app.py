@@ -92,6 +92,22 @@ with col1:
 with col2:
     st.subheader("改善案")
 
+    st.subheader("コスト変化の理由")
+
+transport_reason = st.text_area(
+    "物流費が変化する理由",
+    placeholder="例：中間拠点を削減し、輸送回数が減るため",
+)
+
+processing_reason = st.text_area(
+    "加工費が変化する理由",
+    placeholder="例：委託加工先の単価が高くなるため",
+)
+
+storage_reason = st.text_area(
+    "保管費が変化する理由",
+    placeholder="例：保管拠点を集約し、倉庫使用量が減るため",
+)
     improved_transport = st.number_input(
         "改善案：月間物流費（円）",
         min_value=0,
