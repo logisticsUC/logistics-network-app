@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-
+from google import genai
 
 # ==========================================
 # ページの基本設定
@@ -1111,7 +1111,192 @@ else:
         "物流条件・コスト条件・リスク評価を再確認してください。"
     )
 
+# ==========================================
+# STEP 8：AIによる追加分析
+# ==========================================
 
+st.divider()
+
+st.header("8．🤖 AIによる追加分析")
+
+st.write(
+    """
+    これまで入力した改善内容・物流条件・コスト・リスク評価をもとに、
+    AIが追加で確認すべきリスクや検討事項を整理します。
+    """
+)
+
+st.info(
+    "AI分析には入力内容がGemini APIへ送信されます。"
+    "会社名・取引先名・実際の原価などの機密情報は入力しないでください。"
+)
+
+
+# ==========================================
+# AIに渡す定性評価の文章を作成
+# ==========================================
+
+evaluation_text = ""
+
+for result in evaluation_results:
+
+    evaluation_text += (
+        f"- {result['分類']}："
+        f"{result['確認項目']} "
+        f"→ 評価：{result['評価']}\n"
+    )
+
+
+# ==========================================
+# AIに渡す分析用プロンプト
+# ==========================================
+
+ai_prompt = f"""
+あなたは製造業のサプライチェーン・物流改善を支援する専門家です。
+
+以下は、物流ネットワーク改善案について利用者が入力した評価結果です。
+
+この情報をもとに、改善案を客観的に分析してください。
+
+【改善テーマ】
+{improvement_theme}
+
+【現在の物流ネットワーク】
+{current_network}
+
+【改善後の物流ネットワーク】
+{improved_network}
+
+【改善を検討している理由】
+{improvement_reason}
+
+【月間取扱数量】
+{monthly_quantity:,} 個
+
+【物流条件】
+
+輸送距離：
+現行 {current_distance:,} km
+改善後 {improved_distance:,} km
+
+月間輸送回数：
+現行 {current_frequency:,} 回
+改善後 {improved_frequency:,} 回
+
+リードタイム：
+現行 {current_leadtime:,.1f} 日
+改善後 {improved_leadtime:,.1f} 日
+
+【コスト】
+
+現行年間総コスト：
+{current_annual_total:,.0f} 円
+
+改善後年間総コスト：
+{improved_annual_total:,.0f} 円
+
+年間コスト差額：
+{annual_difference:,.0f} 円
+
+【コスト以外の評価】
+
+{evaluation_text}
+
+
+以下の5項目で分析してください。
+
+1. 改善案の主なメリット
+2. 現在確認できる懸念点・リスク
+3. 利用者が見落としている可能性があるリスク
+4. 実施前に追加で確認すべき事項
+5. 総合コメント
+
+重要：
+・入力されていない情報を事実として断定しないでください。
+・不明な情報については「確認が必要」としてください。
+・コスト削減だけで改善案を推奨しないでください。
+・品質、供給安定性、在庫、BCP、切替リスクも考慮してください。
+・最終的な意思決定を断定せず、意思決定を支援する形で回答してください。
+・回答は日本語で、専門用語を使いすぎず分かりやすくまとめてください。
+"""
+
+
+# ==========================================
+# AI分析ボタン
+# ==========================================
+
+if st.button(
+    "🤖 AI分析を実行",
+    type="primary",
+    use_container_width=True,
+):
+
+    # 未回答項目がある場合は注意を表示
+    if unselected_count > 0:
+
+        st.warning(
+            f"STEP6に未回答の項目が {unselected_count} 件あります。"
+            "AI分析は可能ですが、すべて回答した方が分析精度が高くなります。"
+        )
+
+    try:
+
+        # Streamlit SecretsからAPIキーを取得
+        api_key = st.secrets["GEMINI_API_KEY"]
+
+        # Geminiとの接続
+        client = genai.Client(
+            api_key=api_key
+        )
+
+        # 分析中の表示
+        with st.spinner(
+            "AIが改善案を分析しています..."
+        ):
+
+            response = client.models.generate_content(
+                model="gemini-3.7-flash",
+                contents=ai_prompt,
+            )
+
+        # ==================================
+        # AI分析結果
+        # ==================================
+
+        st.subheader("🤖 AI分析結果")
+
+        st.markdown(
+            response.text
+        )
+
+        st.caption(
+            "AIの回答は補助的な分析です。"
+            "実際の改善判断では、現場条件や関係部門による確認が必要です。"
+        )
+
+
+    except KeyError:
+
+        st.error(
+            "Gemini APIキーが見つかりません。"
+            "StreamlitのSecretsに"
+            "「GEMINI_API_KEY」が登録されているか確認してください。"
+        )
+
+
+    except Exception as e:
+
+        st.error(
+            "AI分析中にエラーが発生しました。"
+        )
+
+        st.write(
+            "エラー内容："
+        )
+
+        st.code(
+            str(e)
+        )
 # ==========================================
 # 最終的な注意事項
 # ==========================================
