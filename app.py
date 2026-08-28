@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+
 # ==========================================
 # ページの基本設定
 # ==========================================
@@ -11,6 +12,7 @@ st.set_page_config(
     layout="wide",
 )
 
+
 # ==========================================
 # タイトル
 # ==========================================
@@ -20,12 +22,11 @@ st.title("🚚 物流ネットワーク評価アプリ")
 st.write(
     """
     製造業の物流ネットワークについて、
-    現状と改善案を整理し、コストや物流条件の変化を比較・評価する
-    卒業研究用アプリです。
+    現状と改善案を整理し、コスト・物流条件・リスクの観点から
+    改善案を評価する卒業研究用アプリです。
     """
 )
 
-# 機密情報に関する注意
 st.warning(
     "会社名、取引先名、実際の原価などの機密情報は入力せず、"
     "匿名化または架空のデータを使用してください。"
@@ -49,24 +50,30 @@ improvement_theme = st.selectbox(
     ],
 )
 
+
 st.subheader("現在の物流ネットワーク")
 
 current_network = st.text_area(
     "現在の物流の流れを入力してください",
-    placeholder="例：工場 → 物流センター → 委託加工先 → 物流センター",
+    placeholder="例：工場 → 物流センター → 委託加工先 → 物流センター → 顧客",
 )
+
 
 st.subheader("検討する改善案")
 
 improved_network = st.text_area(
     "改善後の物流の流れを入力してください",
-    placeholder="例：工場 → 委託加工先 → 物流センター",
+    placeholder="例：工場 → 委託加工先 → 物流センター → 顧客",
 )
 
+
 improvement_reason = st.text_area(
-    "なぜこの改善を検討していますか？",
+    "この改善を検討している理由",
     placeholder="例：中間輸送を削減し、物流費とリードタイムを低減するため",
 )
+
+
+st.divider()
 
 
 # ==========================================
@@ -76,10 +83,12 @@ improvement_reason = st.text_area(
 st.header("2．現在の物流状況")
 
 st.write(
-    "現在の物流ネットワークの基本条件を入力してください。"
+    "現在の物流ネットワークについて、基本的な物流条件を入力してください。"
 )
 
+
 col1, col2 = st.columns(2)
+
 
 with col1:
 
@@ -96,6 +105,7 @@ with col1:
         value=300,
         step=10,
     )
+
 
 with col2:
 
@@ -114,6 +124,9 @@ with col2:
     )
 
 
+st.divider()
+
+
 # ==========================================
 # STEP 3：改善後の物流条件
 # ==========================================
@@ -124,7 +137,9 @@ st.write(
     "改善を実施した場合の物流条件を入力してください。"
 )
 
+
 col1, col2 = st.columns(2)
+
 
 with col1:
 
@@ -134,6 +149,7 @@ with col1:
         value=180,
         step=10,
     )
+
 
 with col2:
 
@@ -158,67 +174,341 @@ with col2:
 
 st.subheader("物流条件の改善効果")
 
-# 輸送距離の差
+
 distance_difference = (
     current_distance - improved_distance
 )
 
-# 輸送回数の差
 frequency_difference = (
     current_frequency - improved_frequency
 )
 
-# リードタイムの差
 leadtime_difference = (
     current_leadtime - improved_leadtime
 )
 
-# 輸送回数の削減率
+
+if current_distance > 0:
+
+    distance_reduction_rate = (
+        distance_difference / current_distance
+    ) * 100
+
+else:
+
+    distance_reduction_rate = 0
+
+
 if current_frequency > 0:
+
     frequency_reduction_rate = (
         frequency_difference / current_frequency
     ) * 100
+
 else:
+
     frequency_reduction_rate = 0
 
 
-# 3つの改善効果を横並びで表示
+if current_leadtime > 0:
+
+    leadtime_reduction_rate = (
+        leadtime_difference / current_leadtime
+    ) * 100
+
+else:
+
+    leadtime_reduction_rate = 0
+
+
 result_col1, result_col2, result_col3 = st.columns(3)
+
 
 with result_col1:
 
     st.metric(
         "輸送距離",
         f"{improved_distance:,} km",
-        delta=f"{distance_difference:,.0f} km短縮",
+        delta=f"{distance_difference:,.0f} km",
     )
+
 
 with result_col2:
 
     st.metric(
         "月間輸送回数",
         f"{improved_frequency:,} 回",
-        delta=f"{frequency_reduction_rate:,.1f}%削減",
+        delta=f"{frequency_difference:,.0f} 回",
     )
+
 
 with result_col3:
 
     st.metric(
         "リードタイム",
         f"{improved_leadtime:,.1f} 日",
-        delta=f"{leadtime_difference:,.1f} 日短縮",
+        delta=f"{leadtime_difference:,.1f} 日",
     )
 
 
+st.divider()
+
+
 # ==========================================
-# STEP 4：現行案と改善案のコスト入力
+# STEP 4：改善テーマ別チェックリスト
 # ==========================================
 
-st.header("4．コスト条件の入力")
+st.header("4．改善時の確認項目")
+
+st.write(
+    """
+    選択した改善テーマに応じて、
+    コストだけでは判断しにくい品質・供給・BCPなどの観点を確認します。
+    """
+)
+
+
+evaluation_options = [
+    "選択してください",
+    "改善する",
+    "変わらない",
+    "悪化する",
+    "不明",
+]
+
+
+# ==========================================
+# テーマ別の質問設定
+# ==========================================
+
+checklists = {
+
+    "委託加工先の変更": [
+
+        (
+            "品質",
+            "新しい委託加工先への変更によって、品質の安定性はどう変化しますか？"
+        ),
+
+        (
+            "供給安定性",
+            "必要数量を安定して生産できる供給能力はどう変化しますか？"
+        ),
+
+        (
+            "供給安定性",
+            "原材料不足や設備停止を含む供給リスクはどう変化しますか？"
+        ),
+
+        (
+            "BCP",
+            "災害やトラブル発生時のBCP対応力はどう変化しますか？"
+        ),
+
+        (
+            "切替リスク",
+            "委託加工先の切替や立上げに伴うリスクはどう変化しますか？"
+        ),
+
+        (
+            "品質",
+            "品質確認や承認に必要な負荷はどう変化しますか？"
+        ),
+
+        (
+            "在庫",
+            "切替時に必要となる在庫量はどう変化しますか？"
+        ),
+
+    ],
+
+
+    "物流拠点の変更": [
+
+        (
+            "物流効率",
+            "需要地までの輸送効率はどう変化しますか？"
+        ),
+
+        (
+            "在庫",
+            "拠点変更によって必要在庫量はどう変化しますか？"
+        ),
+
+        (
+            "供給安定性",
+            "新しい物流拠点の保管・出荷能力は十分ですか？"
+        ),
+
+        (
+            "BCP",
+            "災害発生時の代替拠点確保などBCP対応力はどう変化しますか？"
+        ),
+
+        (
+            "切替リスク",
+            "拠点移転や切替に伴う業務負荷・リスクはどう変化しますか？"
+        ),
+
+        (
+            "品質",
+            "保管環境や荷扱いによる品質リスクはどう変化しますか？"
+        ),
+
+    ],
+
+
+    "輸送ルートの変更": [
+
+        (
+            "物流効率",
+            "輸送距離や輸送時間は改善しますか？"
+        ),
+
+        (
+            "供給安定性",
+            "交通障害などによる輸送停止リスクはどう変化しますか？"
+        ),
+
+        (
+            "品質",
+            "輸送方法の変更による製品品質への影響はありますか？"
+        ),
+
+        (
+            "BCP",
+            "災害や道路寸断時の代替輸送ルートは確保できますか？"
+        ),
+
+        (
+            "在庫",
+            "輸送頻度の変更によって必要在庫量はどう変化しますか？"
+        ),
+
+        (
+            "物流効率",
+            "積載効率や輸送車両の使用効率はどう変化しますか？"
+        ),
+
+    ],
+
+
+    "保管場所の変更": [
+
+        (
+            "在庫",
+            "保管能力や必要在庫量はどう変化しますか？"
+        ),
+
+        (
+            "品質",
+            "温度・湿度・荷扱いなど保管品質への影響はありますか？"
+        ),
+
+        (
+            "物流効率",
+            "工場や顧客までの輸送効率はどう変化しますか？"
+        ),
+
+        (
+            "供給安定性",
+            "入出庫能力や作業人員の確保に問題はありませんか？"
+        ),
+
+        (
+            "BCP",
+            "災害発生時の在庫確保や代替倉庫への対応力はどう変化しますか？"
+        ),
+
+        (
+            "切替リスク",
+            "在庫移動や倉庫切替に伴うリスクはどう変化しますか？"
+        ),
+
+    ],
+
+
+    "その他の物流改善": [
+
+        (
+            "物流効率",
+            "今回の改善によって物流効率はどう変化しますか？"
+        ),
+
+        (
+            "品質",
+            "製品品質への影響はありますか？"
+        ),
+
+        (
+            "供給安定性",
+            "安定供給への影響はありますか？"
+        ),
+
+        (
+            "BCP",
+            "BCP上のリスクはどう変化しますか？"
+        ),
+
+        (
+            "在庫",
+            "必要在庫量への影響はありますか？"
+        ),
+
+        (
+            "切替リスク",
+            "改善実施時の切替リスクはありますか？"
+        ),
+
+    ],
+
+}
+
+
+selected_questions = checklists[improvement_theme]
+
+
+st.info(
+    f"「{improvement_theme}」で確認しておきたい項目を表示しています。"
+)
+
+
+evaluation_results = []
+
+
+for index, question_data in enumerate(selected_questions):
+
+    category = question_data[0]
+    question = question_data[1]
+
+    answer = st.selectbox(
+        f"{index + 1}．【{category}】{question}",
+        evaluation_options,
+        key=f"evaluation_{improvement_theme}_{index}",
+    )
+
+    evaluation_results.append(
+        {
+            "分類": category,
+            "確認項目": question,
+            "評価": answer,
+        }
+    )
+
+
+st.divider()
+
+
+# ==========================================
+# STEP 5：コスト条件の入力
+# ==========================================
+
+st.header("5．コスト条件の入力")
 
 st.write(
     "現行案と改善案について、月間コストを入力してください。"
 )
+
 
 col1, col2 = st.columns(2)
 
@@ -284,36 +574,9 @@ with col2:
 
 
 # ==========================================
-# STEP 5：コスト変化の理由
-# ==========================================
-
-st.header("5．コスト変化の理由")
-
-st.write(
-    "改善によって各コストが変化する理由を整理してください。"
-)
-
-transport_reason = st.text_area(
-    "物流費が変化する理由",
-    placeholder="例：中間拠点を削減し、輸送回数が減るため",
-)
-
-processing_reason = st.text_area(
-    "加工費が変化する理由",
-    placeholder="例：委託加工先を変更することで加工単価が上昇するため",
-)
-
-storage_reason = st.text_area(
-    "保管費が変化する理由",
-    placeholder="例：保管拠点を集約し、倉庫使用量が減るため",
-)
-
-
-# ==========================================
 # コスト計算
 # ==========================================
 
-# 月間加工費
 current_processing = (
     monthly_quantity * current_processing_unit
 )
@@ -322,7 +585,7 @@ improved_processing = (
     monthly_quantity * improved_processing_unit
 )
 
-# 月間総コスト
+
 current_monthly_total = (
     current_transport
     + current_processing
@@ -335,7 +598,7 @@ improved_monthly_total = (
     + improved_storage
 )
 
-# 年間総コスト
+
 current_annual_total = (
     current_monthly_total * 12
 )
@@ -344,32 +607,45 @@ improved_annual_total = (
     improved_monthly_total * 12
 )
 
-# 年間削減額
-annual_difference = (
-    current_annual_total
-    - improved_annual_total
-)
 
-# 月間削減額
 monthly_difference = (
     current_monthly_total
     - improved_monthly_total
 )
 
-# 削減率
+annual_difference = (
+    current_annual_total
+    - improved_annual_total
+)
+
+
 if current_annual_total > 0:
+
     annual_reduction_rate = (
         annual_difference / current_annual_total
     ) * 100
+
 else:
+
     annual_reduction_rate = 0
 
 
+st.divider()
+
+
 # ==========================================
-# STEP 6：コスト比較結果
+# STEP 6：コスト・リスク評価
 # ==========================================
 
-st.header("6．コスト比較結果")
+st.header("6．コスト・リスク評価")
+
+
+# ==========================================
+# コスト比較
+# ==========================================
+
+st.subheader("💰 コスト比較")
+
 
 result_df = pd.DataFrame(
     {
@@ -396,50 +672,51 @@ result_df = pd.DataFrame(
             improved_monthly_total,
             improved_annual_total,
         ],
+
     }
 )
+
 
 st.dataframe(
     result_df,
     use_container_width=True,
+    hide_index=True,
 )
 
 
-# ==========================================
-# コスト改善効果
-# ==========================================
-
-st.subheader("コスト改善効果")
-
 cost_col1, cost_col2, cost_col3 = st.columns(3)
+
 
 with cost_col1:
 
     st.metric(
-        "月間削減額",
+        "月間コスト差額",
         f"{monthly_difference:,.0f} 円",
     )
+
 
 with cost_col2:
 
     st.metric(
-        "年間削減額",
+        "年間コスト差額",
         f"{annual_difference:,.0f} 円",
     )
+
 
 with cost_col3:
 
     st.metric(
-        "年間コスト削減率",
+        "年間コスト変化率",
         f"{annual_reduction_rate:,.1f} %",
     )
 
 
 # ==========================================
-# グラフ
+# 年間総コストグラフ
 # ==========================================
 
 st.subheader("年間総コスト比較")
+
 
 chart_df = pd.DataFrame(
     {
@@ -448,63 +725,326 @@ chart_df = pd.DataFrame(
             improved_annual_total,
         ]
     },
+
     index=[
         "現行案",
         "改善案",
     ],
 )
 
+
 st.bar_chart(chart_df)
 
 
 # ==========================================
-# STEP 7：今回の改善内容まとめ
+# 定性評価
 # ==========================================
 
-st.header("7．改善内容のまとめ")
+st.subheader("🔍 コスト以外の評価")
+
+
+evaluation_df = pd.DataFrame(
+    evaluation_results
+)
+
+
+st.dataframe(
+    evaluation_df,
+    use_container_width=True,
+    hide_index=True,
+)
+
+
+# ==========================================
+# 回答数を集計
+# ==========================================
+
+improved_count = 0
+unchanged_count = 0
+worsened_count = 0
+unknown_count = 0
+unselected_count = 0
+
+
+for result in evaluation_results:
+
+    if result["評価"] == "改善する":
+
+        improved_count += 1
+
+    elif result["評価"] == "変わらない":
+
+        unchanged_count += 1
+
+    elif result["評価"] == "悪化する":
+
+        worsened_count += 1
+
+    elif result["評価"] == "不明":
+
+        unknown_count += 1
+
+    else:
+
+        unselected_count += 1
+
+
+risk_col1, risk_col2, risk_col3, risk_col4 = st.columns(4)
+
+
+with risk_col1:
+
+    st.metric(
+        "改善",
+        f"{improved_count} 項目",
+    )
+
+
+with risk_col2:
+
+    st.metric(
+        "変化なし",
+        f"{unchanged_count} 項目",
+    )
+
+
+with risk_col3:
+
+    st.metric(
+        "悪化",
+        f"{worsened_count} 項目",
+    )
+
+
+with risk_col4:
+
+    st.metric(
+        "不明・未確認",
+        f"{unknown_count + unselected_count} 項目",
+    )
+
+
+# ==========================================
+# 注意が必要な項目
+# ==========================================
+
+st.subheader("⚠️ 注意・確認が必要な項目")
+
+
+attention_items = []
+
+
+for result in evaluation_results:
+
+    if result["評価"] in [
+        "悪化する",
+        "不明",
+        "選択してください",
+    ]:
+
+        attention_items.append(result)
+
+
+if len(attention_items) == 0:
+
+    st.success(
+        "現在の入力では、明確な懸念項目はありません。"
+    )
+
+else:
+
+    for item in attention_items:
+
+        st.warning(
+            f"【{item['分類']}】"
+            f"{item['確認項目']} "
+            f"→ 評価：{item['評価']}"
+        )
+
+
+st.divider()
+
+
+# ==========================================
+# STEP 7：総合評価
+# ==========================================
+
+st.header("7．改善案の総合評価")
+
+st.write(
+    "これまで入力した物流条件・コスト・リスクをまとめて確認します。"
+)
+
+
+# ==========================================
+# 改善テーマ
+# ==========================================
+
+st.subheader("改善概要")
 
 st.write(
     f"**改善テーマ：** {improvement_theme}"
 )
 
+
 if current_network:
+
     st.write(
-        f"**現在の物流ネットワーク：** {current_network}"
+        f"**現在：** {current_network}"
     )
+
 
 if improved_network:
+
     st.write(
-        f"**改善後の物流ネットワーク：** {improved_network}"
+        f"**改善後：** {improved_network}"
     )
 
+
 if improvement_reason:
+
     st.write(
         f"**改善を検討する理由：** {improvement_reason}"
     )
 
-st.write("---")
+
+# ==========================================
+# 物流改善結果
+# ==========================================
+
+st.subheader("🚚 物流条件の変化")
+
 
 summary_col1, summary_col2, summary_col3 = st.columns(3)
+
 
 with summary_col1:
 
     st.metric(
-        "輸送距離の変化",
+        "輸送距離",
         f"{current_distance:,} → {improved_distance:,} km",
+        delta=f"{distance_difference:,.0f} km",
     )
+
 
 with summary_col2:
 
     st.metric(
-        "輸送回数の変化",
+        "輸送回数",
         f"{current_frequency:,} → {improved_frequency:,} 回",
+        delta=f"{frequency_difference:,.0f} 回",
     )
+
 
 with summary_col3:
 
     st.metric(
-        "リードタイムの変化",
+        "リードタイム",
         f"{current_leadtime:,.1f} → {improved_leadtime:,.1f} 日",
+        delta=f"{leadtime_difference:,.1f} 日",
+    )
+
+
+# ==========================================
+# コスト改善結果
+# ==========================================
+
+st.subheader("💰 コスト評価")
+
+
+if annual_difference > 0:
+
+    st.success(
+        f"改善案では年間約 {annual_difference:,.0f} 円の"
+        f"コスト削減が見込まれます。"
+    )
+
+elif annual_difference < 0:
+
+    st.warning(
+        f"改善案では年間約 {abs(annual_difference):,.0f} 円の"
+        f"コスト増加が見込まれます。"
+    )
+
+else:
+
+    st.info(
+        "現行案と改善案の年間総コストは同額です。"
+    )
+
+
+# ==========================================
+# リスク評価結果
+# ==========================================
+
+st.subheader("🛡️ リスク・懸念事項")
+
+
+if worsened_count == 0 and unknown_count == 0 and unselected_count == 0:
+
+    st.success(
+        "入力された評価では、悪化または未確認となっている項目はありません。"
+    )
+
+else:
+
+    st.warning(
+        f"悪化：{worsened_count}項目 ／ "
+        f"不明・未確認：{unknown_count + unselected_count}項目"
+    )
+
+
+# ==========================================
+# 総合コメント
+# ==========================================
+
+st.subheader("📋 総合コメント")
+
+
+if unselected_count > 0:
+
+    st.warning(
+        "まだ回答していない確認項目があります。"
+        "総合判断の前にチェックリストを確認してください。"
+    )
+
+
+elif annual_difference > 0 and worsened_count == 0 and unknown_count == 0:
+
+    st.success(
+        "コスト面で改善効果があり、"
+        "現在の入力では大きなリスク悪化も確認されていません。"
+        "実施条件や詳細内容を確認したうえで、"
+        "改善案を検討する価値があります。"
+    )
+
+
+elif annual_difference > 0 and (
+    worsened_count > 0 or unknown_count > 0
+):
+
+    st.warning(
+        "コスト面では改善効果があります。"
+        "一方で、悪化または未確認となっている項目があります。"
+        "コスト効果だけで判断せず、"
+        "注意項目を確認したうえで改善案を検討してください。"
+    )
+
+
+elif annual_difference <= 0 and improved_count > 0:
+
+    st.info(
+        "コスト削減効果は確認できませんが、"
+        "物流条件や品質・供給など他の項目で改善効果がある可能性があります。"
+        "コスト以外のメリットも含めて判断してください。"
+    )
+
+
+else:
+
+    st.warning(
+        "現在の入力では改善効果が限定的です。"
+        "改善条件やコスト条件を再確認してください。"
     )
 
 
@@ -512,7 +1052,10 @@ with summary_col3:
 # 注意事項
 # ==========================================
 
+st.divider()
+
 st.caption(
     "本アプリは卒業研究用の試作版です。"
-    "実際の投資判断を保証するものではありません。"
+    "表示される評価は入力された情報に基づく検討支援であり、"
+    "実際の投資・物流変更などの意思決定を保証するものではありません。"
 )
