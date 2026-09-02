@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from google import genai
+from groq import Groq
 
 # ==========================================
 # ページの基本設定
@@ -1127,19 +1127,19 @@ st.write(
 )
 
 st.info(
-    "AI分析には入力内容がGemini APIへ送信されます。"
-    "会社名・取引先名・実際の原価などの機密情報は入力しないでください。"
+    "AI分析を実行すると入力内容が外部AIサービスへ送信されます。"
+    "会社名・取引先名・実際の原価などの機密情報は入力せず、"
+    "匿名化・架空データで利用してください。"
 )
 
 
 # ==========================================
-# AIに渡す定性評価の文章を作成
+# 定性評価をAI用の文章に変換
 # ==========================================
 
 evaluation_text = ""
 
 for result in evaluation_results:
-
     evaluation_text += (
         f"- {result['分類']}："
         f"{result['確認項目']} "
@@ -1148,15 +1148,12 @@ for result in evaluation_results:
 
 
 # ==========================================
-# AIに渡す分析用プロンプト
+# AIへの指示文
 # ==========================================
 
 ai_prompt = f"""
-あなたは製造業のサプライチェーン・物流改善を支援する専門家です。
-
-以下は、物流ネットワーク改善案について利用者が入力した評価結果です。
-
-この情報をもとに、改善案を客観的に分析してください。
+以下は、物流ネットワーク改善案について
+利用者が入力した評価結果です。
 
 【改善テーマ】
 {improvement_theme}
@@ -1202,8 +1199,7 @@ ai_prompt = f"""
 
 {evaluation_text}
 
-
-以下の5項目で分析してください。
+上記をもとに、次の5項目について分析してください。
 
 1. 改善案の主なメリット
 2. 現在確認できる懸念点・リスク
@@ -1211,13 +1207,16 @@ ai_prompt = f"""
 4. 実施前に追加で確認すべき事項
 5. 総合コメント
 
-重要：
-・入力されていない情報を事実として断定しないでください。
-・不明な情報については「確認が必要」としてください。
-・コスト削減だけで改善案を推奨しないでください。
-・品質、供給安定性、在庫、BCP、切替リスクも考慮してください。
-・最終的な意思決定を断定せず、意思決定を支援する形で回答してください。
-・回答は日本語で、専門用語を使いすぎず分かりやすくまとめてください。
+次のルールを必ず守ってください。
+
+・入力されていない情報を事実として断定しない
+・分からないことは「確認が必要」とする
+・単純にコストが下がるという理由だけで改善案を推奨しない
+・品質、供給安定性、在庫、リードタイム、BCP、切替リスクも考慮する
+・入力済みの数値計算をやり直す必要はない
+・利用者が気づいていない可能性のある観点を積極的に提示する
+・最終判断をAIが断定せず、意思決定を支援する
+・日本語で分かりやすく回答する
 """
 
 
@@ -1231,43 +1230,54 @@ if st.button(
     use_container_width=True,
 ):
 
-    # 未回答項目がある場合は注意を表示
     if unselected_count > 0:
-
         st.warning(
             f"STEP6に未回答の項目が {unselected_count} 件あります。"
-            "AI分析は可能ですが、すべて回答した方が分析精度が高くなります。"
+            "AI分析は可能ですが、すべて回答した方が分析しやすくなります。"
         )
 
     try:
 
-        # Streamlit SecretsからAPIキーを取得
-        api_key = st.secrets["GEMINI_API_KEY"]
+        # Streamlit SecretsからGroq APIキーを取得
+        api_key = st.secrets["GROQ_API_KEY"]
 
-        # Geminiとの接続
-        client = genai.Client(
+        # Groqに接続
+        client = Groq(
             api_key=api_key
         )
 
-        # 分析中の表示
         with st.spinner(
-            "AIが改善案を分析しています..."
+            "AIが物流改善案を分析しています..."
         ):
 
-            response = client.models.generate_content(
-                model="gemini-3.7-flash",
-                contents=ai_prompt,
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "あなたは製造業の物流・サプライチェーン改善を"
+                            "支援する専門アドバイザーです。"
+                            "改善案を一方的に決定するのではなく、"
+                            "利用者の意思決定を支援してください。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": ai_prompt,
+                    },
+                ],
+
+                temperature=0.3,
             )
 
-        # ==================================
-        # AI分析結果
-        # ==================================
+        # AIの回答を取得
+        ai_result = response.choices[0].message.content
 
         st.subheader("🤖 AI分析結果")
 
-        st.markdown(
-            response.text
-        )
+        st.markdown(ai_result)
 
         st.caption(
             "AIの回答は補助的な分析です。"
@@ -1278,9 +1288,9 @@ if st.button(
     except KeyError:
 
         st.error(
-            "Gemini APIキーが見つかりません。"
+            "Groq APIキーが見つかりません。"
             "StreamlitのSecretsに"
-            "「GEMINI_API_KEY」が登録されているか確認してください。"
+            "「GROQ_API_KEY」が登録されているか確認してください。"
         )
 
 
@@ -1290,13 +1300,10 @@ if st.button(
             "AI分析中にエラーが発生しました。"
         )
 
-        st.write(
-            "エラー内容："
-        )
+        st.write("エラー内容：")
 
-        st.code(
-            str(e)
-        )
+        st.code(str(e))
+        
 # ==========================================
 # 最終的な注意事項
 # ==========================================
