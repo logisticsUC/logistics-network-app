@@ -133,8 +133,18 @@ def yen(value):
     return f"¥{value:,.0f}"
 
 
-def reduction_label(diff):
-    return "削減見込み" if diff > 0 else ("増加見込み" if diff < 0 else "差額なし")
+def cost_trend_label(change):
+    """コスト増減（改善案−現行案）：マイナスなら削減、プラスなら増加。"""
+    return "コストDOWN（削減）" if change < 0 else ("コストUP（増加）" if change > 0 else "コスト変化なし")
+
+
+def signed_yen(change):
+    """金額を -¥200,000 / +¥200,000 / ¥0 の形式で表示する。"""
+    if change < 0:
+        return f"−{yen(abs(change))}"
+    if change > 0:
+        return f"＋{yen(change)}"
+    return yen(0)
 
 
 st.markdown("""
@@ -235,10 +245,13 @@ with tab_flow:
         ["km", "回", "日"],
         [distance_reduction_rate, frequency_reduction_rate, leadtime_reduction_rate],
     ):
-        tone = "good" if rate > 0 else ("warn" if rate < 0 else "blue")
+        # 利用者に表示する「変化率」は改善案−現行案の向きに統一。
+        # 距離・回数・リードタイムが減る場合はマイナス＝改善。
+        change_rate = -rate
+        tone = "good" if change_rate < 0 else ("warn" if change_rate > 0 else "blue")
         with col:
             kpi(label, f"{new:,.1f} {unit}" if unit == "日" else f"{new:,.0f} {unit}",
-                f"現行 {old:,.1f} → {new:,.1f} / 変化率 {rate:+.1f}%", tone)
+                f"現行 {old:,.1f} → {new:,.1f} / 変化率 {change_rate:+.1f}%", tone)
 
 checklists = {
 
@@ -561,9 +574,14 @@ with tab_cost:
     improved_monthly_total = improved_transport + improved_processing + improved_storage
     current_annual_total = current_monthly_total * 12
     improved_annual_total = improved_monthly_total * 12
+    # 内部の改善効果判定には従来どおり「現行−改善」（削減なら正）を使用。
     monthly_difference = current_monthly_total - improved_monthly_total
     annual_difference = current_annual_total - improved_annual_total
-    annual_reduction_rate = annual_difference / current_annual_total * 100 if current_annual_total else 0
+
+    # 画面上の「増減」はすべて改善案−現行案（削減なら負）に統一する。
+    monthly_cost_change = improved_monthly_total - current_monthly_total
+    annual_cost_change = improved_annual_total - current_annual_total
+    annual_cost_change_rate = annual_cost_change / current_annual_total * 100 if current_annual_total else 0
 
     if monthly_quantity == 0:
         st.warning("月間取扱数量が0のため、加工費は0円として計算されています。")
@@ -574,10 +592,10 @@ with tab_cost:
     with cols[1]:
         kpi("年間総コスト｜改善案", yen(improved_annual_total), "改善案を12か月換算", "blue")
     with cols[2]:
-        kpi(f"年間差額｜{reduction_label(annual_difference)}",
-            ("+" if annual_difference > 0 else "−" if annual_difference < 0 else "") + yen(abs(annual_difference)),
-            f"コスト削減率 {annual_reduction_rate:+.1f}%",
-            "good" if annual_difference > 0 else "warn" if annual_difference < 0 else "blue")
+        kpi(f"年間コスト増減｜{cost_trend_label(annual_cost_change)}",
+            signed_yen(annual_cost_change),
+            f"現行比 {annual_cost_change_rate:+.1f}% ／ −は削減・＋は増加",
+            "good" if annual_cost_change < 0 else "warn" if annual_cost_change > 0 else "blue")
 
     st.markdown("#### コスト構造の比較")
     yearly_costs = pd.DataFrame({
@@ -592,9 +610,10 @@ with tab_cost:
         "現行案": [current_transport, current_processing, current_storage, current_monthly_total, current_annual_total],
         "改善案": [improved_transport, improved_processing, improved_storage, improved_monthly_total, improved_annual_total],
     })
-    cost_table["差額（現行−改善）"] = cost_table["現行案"] - cost_table["改善案"]
-    st.dataframe(cost_table.style.format({"現行案":"¥{:,.0f}","改善案":"¥{:,.0f}","差額（現行−改善）":"{:+,.0f}円"}),
+    cost_table["増減（改善−現行）"] = cost_table["改善案"] - cost_table["現行案"]
+    st.dataframe(cost_table.style.format({"現行案": yen, "改善案": yen, "増減（改善−現行）": signed_yen}),
                  hide_index=True, use_container_width=True)
+    st.caption("※ 増減＝改善案−現行案。マイナス（−）はコスト削減、プラス（＋）はコスト増加です。")
     st.caption("※ 加工費＝月間取扱数量×加工単価。年間費用は月間費用×12で試算し、初期投資や在庫評価額などは含みません。")
 
 with tab_risk:
@@ -647,11 +666,12 @@ with tab_report:
     section("06", "意思決定レポート", "ここまでの入力値を統合し、数字とリスクを一画面で比較します。")
     report_cols = st.columns(3)
     with report_cols[0]:
-        kpi("年間コスト差額", f"{annual_difference:+,.0f} 円",
-            "＋はコスト削減／−はコスト増加", "good" if annual_difference>0 else "warn" if annual_difference<0 else "blue")
+        kpi(f"年間コスト増減｜{cost_trend_label(annual_cost_change)}", signed_yen(annual_cost_change),
+            f"現行比 {annual_cost_change_rate:+.1f}% ／ −は削減・＋は増加",
+            "good" if annual_cost_change < 0 else "warn" if annual_cost_change > 0 else "blue")
     with report_cols[1]:
-        kpi("輸送距離変化", f"{distance_reduction_rate:+.1f}%",
-            f"{current_distance:,} → {improved_distance:,} km", "good" if distance_reduction_rate>0 else "warn" if distance_reduction_rate<0 else "blue")
+        kpi("輸送距離変化", f"{-distance_reduction_rate:+.1f}%",
+            f"{current_distance:,} → {improved_distance:,} km ／ −は短縮", "good" if distance_reduction_rate>0 else "warn" if distance_reduction_rate<0 else "blue")
     with report_cols[2]:
         kpi("要確認・悪化項目", f"{worsened_count+unknown_count+unselected_count} 件",
             "悪化・不明・未評価の合計", "warn" if worsened_count+unknown_count+unselected_count else "good")
@@ -720,7 +740,8 @@ with tab_report:
 【コスト】
 現行年間総コスト：{current_annual_total:,.0f} 円
 改善案年間総コスト：{improved_annual_total:,.0f} 円
-年間コスト差額（現行−改善）：{annual_difference:,.0f} 円
+年間コスト増減（改善−現行）：{annual_cost_change:,.0f} 円
+※ マイナスはコスト削減、プラスはコスト増加。
 【定性評価】
 {evaluation_text}
 【改善判断の根拠（任意）】
